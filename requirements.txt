@@ -1,0 +1,7 @@
+jupyter
+ipywidgets
+voila
+pillow
+matplotlib
+pygame
+gradio
