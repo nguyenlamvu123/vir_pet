@@ -3,16 +3,16 @@ from coordinate import gr, os, threading, time, \
     VirtualPet, thre_hold
 
 
-pet = VirtualPet("Mèo Con")
+pet = VirtualPet("Bé Mai")
 
 with gr.Blocks() as demo:
-    gr.Markdown("## Thú cưng ảo 🐾")
+    gr.Markdown("## Bé ảo 🐾")
     timer = gr.Timer(value=int(CHANGESTATUSTIME))
 
     output_text = gr.Textbox(label="Trạng thái")
     with gr.Column():
         with gr.Row():
-            output_img = gr.Image(label="Hình ảnh thú cưng", value=f"{IMAGE_DIR}{os.sep}base.gif", scale=7)
+            output_img = gr.Image(label="Hình ảnh bé", value=f"{IMAGE_DIR}{os.sep}base.gif", scale=7)
             with gr.Column():
                 with gr.Row(): output_html = gr.HTML(pet.rule, scale=3)
                 with gr.Row(): output_alert = gr.Textbox(label="Cảnh báo", lines=10, scale=3)
