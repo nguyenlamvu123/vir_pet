@@ -1,4 +1,4 @@
-from coordinate import gr, os, \
+from coordinate import gr, os, threading, time, \
     IMAGE_DIR
 
 class VirtualPet:
@@ -19,6 +19,13 @@ class VirtualPet:
         :return:
         """
         return f"{self.name} {activ_name[1]}", f"{IMAGE_DIR}{os.sep}{activ_name[0]}.gif", self.hunger, self.happiness, self.energy
+
+    def tick(self):
+        # Mỗi lần tick: hunger +1, happiness -1, energy -1
+        self.hunger = min(100, self.hunger + 1)
+        self.happiness = max(0, self.happiness - 1)
+        self.energy = max(0, self.energy - 1)
+        return f"{self.name} trạng thái hiện tại", f"{IMAGE_DIR}{os.sep}base.png", self.hunger, self.happiness, self.energy
 
     def feed(self):
         activ_name = ("eat", "đang ăn 🍖", )
@@ -44,6 +51,7 @@ pet = VirtualPet("Mèo Con")
 
 with gr.Blocks() as demo:
     gr.Markdown("## Thú cưng ảo 🐾")
+    timer = gr.Timer(value=10.0)
 
     output_text = gr.Textbox(label="Trạng thái")
     output_img = gr.Image(label="Hình ảnh thú cưng", value=f"{IMAGE_DIR}{os.sep}base.gif")
@@ -63,6 +71,13 @@ with gr.Blocks() as demo:
     btn_feed.click(fn=pet.feed, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy])
     btn_play.click(fn=pet.play, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy])
     btn_sleep.click(fn=pet.sleep, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy])
+
+    demo.load(
+        fn=pet.tick, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy],
+    )
+    timer.tick(
+        fn=pet.tick, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy],
+    )
 
 demo.launch(
     # share=True,
