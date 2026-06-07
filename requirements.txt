@@ -5,3 +5,4 @@ pillow
 matplotlib
 pygame
 gradio
+python-dotenv
