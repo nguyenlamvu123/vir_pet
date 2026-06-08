@@ -1,6 +1,7 @@
 import gradio as gr
 from PIL import Image, ImageSequence
-import os, threading, time
+import os, threading, time, cv2, random
+import numpy as np
 from dotenv import load_dotenv
 
 # Load biến môi trường từ file .env
@@ -16,6 +17,12 @@ REALTIME = False if int(REALTIME_) == 0 else True
 CHANGESTATUSTIME = os.getenv("CHANGESTATUSTIME", 10)
 
 offsets = [(-5, 0), (5, 0), (0, -5), (0, 5), (0, 0), (-10, 0), (10, 0), (0, -10), (0, 10), (0, 0), ]
+
+
+def readimg(outna):
+    if not outna.endswith(EXT_OF_IMG):
+        outna += EXT_OF_IMG
+        return cv2.imread(f"{IMAGE_DIR}{os.sep}{outna}")
 
 
 def create_gif(gif_name, *list_of_path):
@@ -47,6 +54,99 @@ def create_gif(gif_name, *list_of_path):
         duration=500,   # thời gian mỗi frame (ms)
         loop=0          # 0 = lặp vô hạn
     )
+
+
+def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name="eat"):
+    bg = readimg(bg_path)
+    item = readimg(item_path)
+    if bg is None or item is None:
+        print("Không đọc được ảnh!")
+        return
+
+    h_bg, w_bg, _ = bg.shape
+
+    # --- bỏ nền trắng ---
+    gray = cv2.cvtColor(item, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+    b, g, r = cv2.split(item)
+    item_rgba = cv2.merge([b, g, r, mask])
+
+    result = bg.copy()
+
+    # --- vùng cấm: hình vuông cạnh 1/2 chiều rộng ảnh, ở nửa trên ---
+    forbidden_size = int(w_bg * 0.5)
+    forbidden_xmin = (w_bg - forbidden_size) // 2
+    forbidden_xmax = forbidden_xmin + forbidden_size
+    forbidden_ymin = 0
+    forbidden_ymax = h_bg // 2
+
+    placed_boxes = []
+
+    def place_item(x, y, target_w, target_h, resized):
+        rgb = resized[:, :, :3]
+        alpha = resized[:, :, 3] / 255.0
+        alpha_inv = 1.0 - alpha
+        for c in range(3):
+            result[y:y+target_h, x:x+target_w, c] = (
+                alpha * rgb[:, :, c] +
+                alpha_inv * result[y:y+target_h, x:x+target_w, c]
+            )
+        placed_boxes.append((x, y, x+target_w, y+target_h))
+
+    def resize_item():
+        ratio = random.uniform(min_ratio, max_ratio)
+        target_w = int(w_bg * ratio)
+        target_h = int(item_rgba.shape[0] * (target_w / item_rgba.shape[1]))
+        resized = cv2.resize(item_rgba, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        return target_w, target_h, resized
+
+    # --- THAY ĐỔI: chèn vào 4 góc ---
+    corners = [(0, 0), (w_bg, 0), (0, h_bg), (w_bg, h_bg)]
+    for cx, cy in corners:
+        target_w, target_h, resized = resize_item()
+        x = max(0, cx - target_w if cx > 0 else 0)
+        y = max(0, cy - target_h if cy > 0 else 0)
+        place_item(x, y, target_w, target_h, resized)
+
+    # --- THAY ĐỔI: thêm 4 vị trí ngẫu nhiên ---
+    for _ in range(4):
+        target_w, target_h, resized = resize_item()
+        for _ in range(100):
+            x = random.randint(0, w_bg - target_w)
+            y = random.randint(0, h_bg - target_h)
+
+            # kiểm tra vùng cấm
+            overlap_forbidden = not (x + target_w < forbidden_xmin or x > forbidden_xmax or
+                                     y + target_h < forbidden_ymin or y > forbidden_ymax)
+            if overlap_forbidden:
+                continue
+
+            # kiểm tra chồng lấn
+            new_box = (x, y, x+target_w, y+target_h)
+            too_much_overlap = False
+            for bx in placed_boxes:
+                ixmin = max(new_box[0], bx[0])
+                iymin = max(new_box[1], bx[1])
+                ixmax = min(new_box[2], bx[2])
+                iymax = min(new_box[3], bx[3])
+                if ixmin < ixmax and iymin < iymax:
+                    inter_area = (ixmax - ixmin) * (iymax - iymin)
+                    box_area = (new_box[2]-new_box[0])*(new_box[3]-new_box[1])
+                    if inter_area / box_area > 0.2:
+                        too_much_overlap = True
+                        break
+            if too_much_overlap:
+                continue
+
+            place_item(x, y, target_w, target_h, resized)
+            break
+
+    if not activ_name.endswith(EXT_OF_IMG):
+        activ_name += EXT_OF_IMG
+    cv2.imwrite(f"{IMAGE_DIR}{os.sep}{activ_name}", result)
+    print(f"Đã lưu ảnh kết quả {activ_name}")
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 def thre_hold(hunger, energy, happiness):
@@ -131,5 +231,9 @@ class VirtualPet:
 
 
 if __name__ == "__main__":
-    for imgnam in [ina for ina in os.listdir(IMAGE_DIR) if ina.endswith(EXT_OF_IMG)]:
-        create_gif(imgnam[: -4], imgnam, )
+    create_gif('base', 'base', )
+    for activ_name in (('play__', "play", ), ('food', "eat", ), ('moon_star', "sleep"), ):
+        overlay_items(activ_name[0], num_items=8, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name=activ_name[1])
+        create_gif(activ_name[1], activ_name[1], )
+    # for imgnam in [ina for ina in os.listdir(IMAGE_DIR) if ina.endswith(EXT_OF_IMG)]:
+    #     create_gif(imgnam[: -4], imgnam, )

@@ -6,3 +6,4 @@ matplotlib
 pygame
 gradio
 python-dotenv
+opencv-python
