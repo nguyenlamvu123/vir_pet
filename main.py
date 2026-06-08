@@ -15,7 +15,8 @@ with gr.Blocks() as demo:
             output_img = gr.Image(label="Hình ảnh bé", value=f"{IMAGE_DIR}{os.sep}base.gif", scale=7)
             with gr.Column():
                 with gr.Row(): output_html = gr.HTML(pet.rule, scale=3)
-                with gr.Row(): output_alert = gr.Textbox(label="Cảnh báo", lines=10, scale=3)
+                with gr.Row(): output_alert = gr.Textbox(label="Cảnh báo", lines=3, scale=5)
+                with gr.Row(): output_audio = gr.Audio(label="Âm thanh cảnh báo", type="filepath", autoplay=True)  # , visible=False)
 
     with gr.Column():
         with gr.Row():
@@ -32,7 +33,7 @@ with gr.Blocks() as demo:
     btn_play.click(fn=pet.play, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy])
     btn_sleep.click(fn=pet.sleep, inputs=None, outputs=[output_text, output_img, progress_hunger, progress_happiness, progress_energy])
 
-    outputs_list = [output_text, output_img, progress_hunger, progress_happiness, progress_energy, output_alert]
+    outputs_list = [output_text, output_img, progress_hunger, progress_happiness, progress_energy, output_alert, output_audio]
 
     demo.load(fn=pet.tick, inputs=None, outputs=outputs_list)
     timer.tick(fn=pet.tick, inputs=None, outputs=outputs_list)

@@ -9,6 +9,7 @@ load_dotenv()
 
 # Lấy đường dẫn thư mục ảnh
 IMAGE_DIR = os.getenv("IMAGE_DIR", "images")
+AUDIO_DIR = os.getenv("AUDIO_DIR", "sound")
 EXT_OF_IMG = os.getenv("EXT_OF_IMG", ".png")
 SHARE_ = os.getenv("SHARE", 0)
 SHARE = False if int(SHARE_) == 0 else True
@@ -57,6 +58,7 @@ def create_gif(gif_name, *list_of_path):
 
 
 def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name="eat"):
+    """- code python ghép đồ dùng (bỏ nền trắng) vào 4 góc của ảnh gốc, lặp lại 4 lần vào các vị trí ngẫu nhiên của ảnh nhưng chồng lấn lên nhau ít nhất (không chèn vào hình vuông cạnh 1/2 chiều rộng ảnh ở nửa trên ảnh)"""
     bg = readimg(bg_path)
     item = readimg(item_path)
     if bg is None or item is None:
@@ -151,13 +153,17 @@ def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path
 
 def thre_hold(hunger, energy, happiness):
     alert = ""
+    aulist = list()  # f"{AUDIO_DIR}{os.sep}base.mp3"  # TODO
     if hunger > 80:
         alert += "Đói quá đói quá!\n"  # TODO sinh câu văn tương tự  # TODO text to speech
+        aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  #
     if energy < 20:
         alert += "mệt quá mệt quá!\n"
+        aulist.append(f"{AUDIO_DIR}{os.sep}weak.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}weak.mp3"  #
     if happiness < 20:
         alert += "buồn quá buồn quá!\n"
-    return alert
+        aulist.append(f"{AUDIO_DIR}{os.sep}bore.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}bore.mp3"  #
+    return alert, aulist
 
 
 class VirtualPet:
@@ -166,6 +172,8 @@ class VirtualPet:
         self.hunger = 50
         self.happiness = 50
         self.energy = 50
+        self.audio_queue = []
+        self.last_audio = None
         self.rule = """<ul>
   <li><strong>Feed:</strong> Hunger - 10, Happiness + 5</li>
   <li><strong>Play:</strong> Happiness + 10, Hunger + 10, Energy - 5</li>
@@ -206,8 +214,17 @@ class VirtualPet:
 
     def tick(self):
         self.update_status_by_time()
-        ale = thre_hold(self.hunger, self.energy, self.happiness)
-        return f"{self.name} trạng thái hiện tại", f"{IMAGE_DIR}{os.sep}base.png", self.hunger, self.happiness, self.energy, ale
+        ale, audios = thre_hold(self.hunger, self.energy, self.happiness)
+
+        if not self.audio_queue:
+            self.audio_queue.extend(audios)
+
+        current_audio = None
+
+        if self.audio_queue:
+            current_audio = self.audio_queue.pop(0)
+
+        return f"{self.name} trạng thái hiện tại", f"{IMAGE_DIR}{os.sep}base.png", self.hunger, self.happiness, self.energy, ale, current_audio
 
     def feed(self):
         activ_name = ("eat", "đang ăn 🍖", )
