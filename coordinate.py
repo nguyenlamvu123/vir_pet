@@ -103,7 +103,12 @@ def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path
         return target_w, target_h, resized
 
     # --- THAY ĐỔI: chèn vào 4 góc ---
-    corners = [(0, 0), (w_bg, 0), (0, h_bg), (w_bg, h_bg)]
+    corners = [
+        (0, 10),
+        # (w_bg, 0),
+        # (0, h_bg),
+        (w_bg - 10, h_bg)
+    ]
     for cx, cy in corners:
         target_w, target_h, resized = resize_item()
         x = max(0, cx - target_w if cx > 0 else 0)
@@ -111,7 +116,7 @@ def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path
         place_item(x, y, target_w, target_h, resized)
 
     # --- THAY ĐỔI: thêm 4 vị trí ngẫu nhiên ---
-    for _ in range(4):
+    if True:  # for _ in range(4):
         target_w, target_h, resized = resize_item()
         for _ in range(100):
             x = random.randint(0, w_bg - target_w)
@@ -153,7 +158,7 @@ def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path
 
 def thre_hold(hunger, energy, happiness):
     alert = ""
-    aulist = list()  # f"{AUDIO_DIR}{os.sep}base.mp3"  # TODO
+    aulist = [f"{AUDIO_DIR}{os.sep}base.mp3", ]  # list()  #
     if hunger > 80:
         alert += "Đói quá đói quá!\n"  # TODO sinh câu văn tương tự  # TODO text to speech
         aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  #
@@ -216,8 +221,8 @@ class VirtualPet:
         self.update_status_by_time()
         ale, audios = thre_hold(self.hunger, self.energy, self.happiness)
 
-        if not self.audio_queue:
-            self.audio_queue.extend(audios)
+        # if not self.audio_queue:
+        self.audio_queue.extend(audios)
 
         current_audio = None
 
@@ -227,20 +232,23 @@ class VirtualPet:
         return f"{self.name} trạng thái hiện tại", f"{IMAGE_DIR}{os.sep}base.png", self.hunger, self.happiness, self.energy, ale, current_audio
 
     def feed(self):
-        activ_name = ("eat", "đang ăn 🍖", )
+        num = random.randrange(4)
+        activ_name = (f"food/eat{num}", "đang ăn 🍖", )
         self.hunger = max(0, self.hunger - 10)
         self.happiness = min(100, self.happiness + 5)
         return self.retu(activ_name)
 
     def play(self):
-        activ_name = ("play", "đang chơi 🎾", )
+        num = random.randrange(4)
+        activ_name = (f"play__/play{num}", "đang chơi 🎾", )
         self.happiness = min(100, self.happiness + 10)
         self.energy = max(0, self.energy - 5)
         self.hunger = min(100, self.hunger + 10)
         return self.retu(activ_name)
 
     def sleep(self):
-        activ_name = ("sleep", "đang ngủ 😴", )
+        num = random.randrange(4)
+        activ_name = (f"moon_star/sleep{num}", "đang ngủ 😴", )
         self.happiness = min(100, self.happiness - 5)
         self.energy = min(100, self.energy + 15)
         self.hunger = min(100, self.hunger + 5)
@@ -249,8 +257,9 @@ class VirtualPet:
 
 if __name__ == "__main__":
     create_gif('base', 'base', )
-    for activ_name in (('play__', "play", ), ('food', "eat", ), ('moon_star', "sleep"), ):
-        overlay_items(activ_name[0], num_items=8, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name=activ_name[1])
-        create_gif(activ_name[1], activ_name[1], )
+    for activ_name in (('play__/play__', "play__/play", ), ('food/food', "food/eat", ), ('moon_star/moon_star', "moon_star/sleep"), ):
+        for so in range(4):
+            overlay_items(f'{activ_name[0]}{so}', num_items=8, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name=f'{activ_name[1]}{so}')
+            create_gif(f'{activ_name[1]}{so}', f'{activ_name[1]}{so}', )
     # for imgnam in [ina for ina in os.listdir(IMAGE_DIR) if ina.endswith(EXT_OF_IMG)]:
     #     create_gif(imgnam[: -4], imgnam, )
