@@ -11,6 +11,14 @@ load_dotenv()
 IMAGE_DIR = os.getenv("IMAGE_DIR", "images")
 AUDIO_DIR = os.getenv("AUDIO_DIR", "sound")
 EXT_OF_IMG = os.getenv("EXT_OF_IMG", ".png")
+
+HUNGERLOSS = int(os.getenv("HUNGERLOSS", 10))
+HUNGERGAIN = int(os.getenv("HUNGERGAIN", 10))
+HAPPYGAIN = int(os.getenv("HAPPYGAIN", 10))
+HAPPYLOSS = int(os.getenv("HAPPYLOSS", 5))
+ENERGAIN = int(os.getenv("ENERGAIN", 15))
+ENERLOSS = int(os.getenv("ENERLOSS", 5))
+
 SHARE_ = os.getenv("SHARE", 0)
 SHARE = False if int(SHARE_) == 0 else True
 REALTIME_ = os.getenv("REALTIME", 0)
@@ -160,22 +168,37 @@ def thre_hold(hunger, energy, happiness, audio_queue):
     alert = ""
     aulist = [f"{AUDIO_DIR}{os.sep}base.mp3", ]  # list()  # danh sách tạm khởi tạo với tiếng kêu mặc định
     if hunger > 80:  # nếu đói vượt quá ngưỡng an toàn
-        alert += "Đói quá đói quá!\n"  # TODO sinh câu văn tương tự  # TODO text to speech
-        aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  # thêm tiếng kêu đói vào danh sách tạm
+        if hunger > 99:
+            return "Chết đói!", []
+        elif hunger < 1:
+            return "Chết no!", []
+        else:
+            alert += "Đói quá đói quá!\n"  # TODO sinh câu văn tương tự  # TODO text to speech
+            aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  # thêm tiếng kêu đói vào danh sách tạm
     else:  # nếu đói nằm trong ngưỡng an toàn
         audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}hunger.mp3"]  # xóa tất cả tiếng kêu đói trong danh sách
     if energy < 20:  # nếu mệt dưới ngưỡng an toàn
-        alert += "mệt quá mệt quá!\n"
-        aulist.append(f"{AUDIO_DIR}{os.sep}weak.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}weak.mp3"  #  thêm tiếng kêu mệt vào danh sách tạm
+        if energy < 1:
+            return "Chết mệt!", []
+        elif energy > 99:
+            return "Sướng quá hóa dồ!", []
+        else:
+            alert += "mệt quá mệt quá!\n"
+            aulist.append(f"{AUDIO_DIR}{os.sep}weak.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}weak.mp3"  #  thêm tiếng kêu mệt vào danh sách tạm
     else:  # nếu mệt nằm trong ngưỡng an toàn
         audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}weak.mp3"]  # xóa tất cả tiếng kêu mệt trong danh sách
     if happiness < 20:  # nếu vui vẻ dưới ngưỡng an toàn
-        alert += "buồn quá buồn quá!\n"
-        aulist.append(f"{AUDIO_DIR}{os.sep}bore.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}bore.mp3"  #  thêm tiếng kêu buồn vào danh sách tạm
+        if happiness < 1:
+            return "Chết chán!", []
+        elif happiness > 99:
+            return "Tăng động mà chết!", []
+        else:
+            alert += "buồn quá buồn quá!\n"
+            aulist.append(f"{AUDIO_DIR}{os.sep}bore.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}bore.mp3"  #  thêm tiếng kêu buồn vào danh sách tạm
     else:  # nếu buồn nằm trong ngưỡng an toàn
         audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}bore.mp3"]  # xóa tất cả tiếng kêu buồn trong danh sách
     # tham số cuối cùng trả về là danh sách đầu vào đã xóa theo trạng thái đắp thêm danh sách tạm
-    return alert, aulist, audio_queue + aulist
+    return alert, audio_queue + aulist
 
 
 class VirtualPet:
@@ -186,10 +209,10 @@ class VirtualPet:
         self.energy = 50
         self.audio_queue: list = []
         self.last_audio = None
-        self.rule = """<ul>
-  <li><strong>Feed:</strong> Hunger - 10, Happiness + 5</li>
-  <li><strong>Play:</strong> Happiness + 10, Hunger + 10, Energy - 5</li>
-  <li><strong>Sleep:</strong> Happiness - 5, Hunger + 5, Energy + 15</li>
+        self.rule = f"""<ul>
+  <li><strong>Feed:</strong> Hunger - {HUNGERLOSS}, Happiness + {HAPPYGAIN}</li>
+  <li><strong>Play:</strong> Happiness + {HAPPYGAIN}, Hunger + {HUNGERGAIN}, Energy - {ENERLOSS}</li>
+  <li><strong>Sleep:</strong> Happiness - {HAPPYLOSS}, Hunger + {HUNGERGAIN}, Energy + {ENERGAIN}</li>
 </ul>"""
         self.last_update_time = time.time()
         self.tick_speed = 1.5
@@ -200,6 +223,25 @@ class VirtualPet:
         :return:
         """
         return f"{self.name} {activ_name[1]}", f"{IMAGE_DIR}{os.sep}{activ_name[0]}.gif", self.hunger, self.happiness, self.energy
+
+    def reset(self):
+        """Khởi động lại toàn bộ chỉ số của thú cưng như ban đầu"""
+        self.hunger = 50
+        self.happiness = 50
+        self.energy = 50
+        self.audio_queue = []  # Làm trống hàng đợi âm thanh
+        self.last_update_time = time.time()  # Cập nhật lại mốc thời gian thực hiện tại
+
+        # Trả về 7 giá trị đồng bộ để reset giao diện UI
+        return (
+            f"{self.name} đã được hồi sinh! Hãy chăm sóc bé tốt hơn nhé 🐾",
+            f"{IMAGE_DIR}{os.sep}base.png",
+            self.hunger,
+            self.happiness,
+            self.energy,
+            "",  # Xóa chữ cảnh báo cũ
+            None  # Tắt âm thanh cũ
+        )
 
     def update_status_by_time(self):
         """Hàm tự động tính toán bù trừ chỉ số dựa trên thời gian thực trôi qua"""
@@ -226,39 +268,35 @@ class VirtualPet:
 
     def tick(self):
         self.update_status_by_time()
-        ale, audios, self.audio_queue = thre_hold(self.hunger, self.energy, self.happiness, self.audio_queue)
+        ale, self.audio_queue = thre_hold(self.hunger, self.energy, self.happiness, self.audio_queue)
 
-        # if not self.audio_queue:
-        self.audio_queue.extend(audios)
-
-        current_audio = None
-
-        if self.audio_queue:
-            current_audio = self.audio_queue.pop(0)
+        current_audio = self.audio_queue.pop(0) \
+            if self.audio_queue else \
+            None  # gameover Chết đói!, Chết mệt!, Chết chán!
 
         return f"{self.name} trạng thái hiện tại", f"{IMAGE_DIR}{os.sep}base.png", self.hunger, self.happiness, self.energy, ale, current_audio
 
     def feed(self):
         num = random.randrange(4)
         activ_name = (f"food/eat{num}", "đang ăn 🍖", )
-        self.hunger = max(0, self.hunger - 10)
-        self.happiness = min(100, self.happiness + 5)
+        self.hunger = max(0, self.hunger - HUNGERLOSS)
+        self.happiness = min(100, self.happiness + HAPPYGAIN)
         return self.retu(activ_name)
 
     def play(self):
         num = random.randrange(4)
         activ_name = (f"play__/play{num}", "đang chơi 🎾", )
-        self.happiness = min(100, self.happiness + 10)
-        self.energy = max(0, self.energy - 5)
-        self.hunger = min(100, self.hunger + 10)
+        self.happiness = min(100, self.happiness + HAPPYGAIN)
+        self.energy = max(0, self.energy - ENERLOSS)
+        self.hunger = min(100, self.hunger + HUNGERGAIN)
         return self.retu(activ_name)
 
     def sleep(self):
         num = random.randrange(4)
         activ_name = (f"moon_star/sleep{num}", "đang ngủ 😴", )
-        self.happiness = min(100, self.happiness - 5)
-        self.energy = min(100, self.energy + 15)
-        self.hunger = min(100, self.hunger + 5)
+        self.happiness = min(100, self.happiness - HAPPYLOSS)
+        self.energy = min(100, self.energy + ENERGAIN)
+        self.hunger = min(100, self.hunger + HUNGERGAIN)
         return self.retu(activ_name)
 
 
