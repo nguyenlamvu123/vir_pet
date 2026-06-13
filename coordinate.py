@@ -156,19 +156,26 @@ def overlay_items(item_path, num_items=10, min_ratio=0.3, max_ratio=0.4, bg_path
     cv2.destroyAllWindows()
 
 
-def thre_hold(hunger, energy, happiness):
+def thre_hold(hunger, energy, happiness, audio_queue):
     alert = ""
-    aulist = [f"{AUDIO_DIR}{os.sep}base.mp3", ]  # list()  #
-    if hunger > 80:
+    aulist = [f"{AUDIO_DIR}{os.sep}base.mp3", ]  # list()  # danh sách tạm khởi tạo với tiếng kêu mặc định
+    if hunger > 80:  # nếu đói vượt quá ngưỡng an toàn
         alert += "Đói quá đói quá!\n"  # TODO sinh câu văn tương tự  # TODO text to speech
-        aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  #
-    if energy < 20:
+        aulist.append(f"{AUDIO_DIR}{os.sep}hunger.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}hunger.mp3"  # thêm tiếng kêu đói vào danh sách tạm
+    else:  # nếu đói nằm trong ngưỡng an toàn
+        audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}hunger.mp3"]  # xóa tất cả tiếng kêu đói trong danh sách
+    if energy < 20:  # nếu mệt dưới ngưỡng an toàn
         alert += "mệt quá mệt quá!\n"
-        aulist.append(f"{AUDIO_DIR}{os.sep}weak.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}weak.mp3"  #
-    if happiness < 20:
+        aulist.append(f"{AUDIO_DIR}{os.sep}weak.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}weak.mp3"  #  thêm tiếng kêu mệt vào danh sách tạm
+    else:  # nếu mệt nằm trong ngưỡng an toàn
+        audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}weak.mp3"]  # xóa tất cả tiếng kêu mệt trong danh sách
+    if happiness < 20:  # nếu vui vẻ dưới ngưỡng an toàn
         alert += "buồn quá buồn quá!\n"
-        aulist.append(f"{AUDIO_DIR}{os.sep}bore.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}bore.mp3"  #
-    return alert, aulist
+        aulist.append(f"{AUDIO_DIR}{os.sep}bore.mp3")  # aulist = f"{AUDIO_DIR}{os.sep}bore.mp3"  #  thêm tiếng kêu buồn vào danh sách tạm
+    else:  # nếu buồn nằm trong ngưỡng an toàn
+        audio_queue = [aq for aq in audio_queue if not aq == f"{AUDIO_DIR}{os.sep}bore.mp3"]  # xóa tất cả tiếng kêu buồn trong danh sách
+    # tham số cuối cùng trả về là danh sách đầu vào đã xóa theo trạng thái đắp thêm danh sách tạm
+    return alert, aulist, audio_queue + aulist
 
 
 class VirtualPet:
@@ -177,7 +184,7 @@ class VirtualPet:
         self.hunger = 50
         self.happiness = 50
         self.energy = 50
-        self.audio_queue = []
+        self.audio_queue: list = []
         self.last_audio = None
         self.rule = """<ul>
   <li><strong>Feed:</strong> Hunger - 10, Happiness + 5</li>
@@ -219,7 +226,7 @@ class VirtualPet:
 
     def tick(self):
         self.update_status_by_time()
-        ale, audios = thre_hold(self.hunger, self.energy, self.happiness)
+        ale, audios, self.audio_queue = thre_hold(self.hunger, self.energy, self.happiness, self.audio_queue)
 
         # if not self.audio_queue:
         self.audio_queue.extend(audios)
@@ -259,7 +266,7 @@ if __name__ == "__main__":
     create_gif('base', 'base', )
     for activ_name in (('play__/play__', "play__/play", ), ('food/food', "food/eat", ), ('moon_star/moon_star', "moon_star/sleep"), ):
         for so in range(4):
-            overlay_items(f'{activ_name[0]}{so}', num_items=8, min_ratio=0.3, max_ratio=0.4, bg_path="base", activ_name=f'{activ_name[1]}{so}')
+            overlay_items(f'{activ_name[0]}{so}', num_items=8, min_ratio=0.5, max_ratio=0.6, bg_path="base", activ_name=f'{activ_name[1]}{so}')
             create_gif(f'{activ_name[1]}{so}', f'{activ_name[1]}{so}', )
     # for imgnam in [ina for ina in os.listdir(IMAGE_DIR) if ina.endswith(EXT_OF_IMG)]:
     #     create_gif(imgnam[: -4], imgnam, )
